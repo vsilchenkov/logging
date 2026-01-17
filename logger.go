@@ -30,7 +30,7 @@ type Logger interface {
 
 var logger *slog.Logger
 
-type defaultlogger struct {
+type Wrappedlogger struct {
 	*slog.Logger
 }
 
@@ -41,11 +41,16 @@ var levelMap = map[int]slog.Level{
 	2: slog.LevelError,
 }
 
-func GetLogger() Logger {
+// NewLogger создаёт Logger из slog.Logger
+func NewLogger(slogger *slog.Logger) *Wrappedlogger {
+	return &Wrappedlogger{slogger}
+}
+
+func GetLogger() *Wrappedlogger {
 	return NewLogger(logger)
 }
 
-func Initlogger(c *Config, sConfig *SentryConfig) Logger {
+func Initlogger(c *Config, sConfig *SentryConfig) *Wrappedlogger {
 
 	var handler slog.Handler
 
@@ -99,28 +104,23 @@ func Initlogger(c *Config, sConfig *SentryConfig) Logger {
 	return NewLogger(logger)
 }
 
-// NewLogger создаёт Logger из slog.Logger
-func NewLogger(slogger *slog.Logger) Logger {
-	return &defaultlogger{slogger}
-}
-
-func (l *defaultlogger) Debug(msg string, attrs ...slog.Attr) {
+func (l *Wrappedlogger) Debug(msg string, attrs ...slog.Attr) {
 	l.Logger.Debug(msg, convertAttrsToAny(attrs)...)
 }
 
-func (l *defaultlogger) Info(msg string, attrs ...slog.Attr) {
+func (l *Wrappedlogger) Info(msg string, attrs ...slog.Attr) {
 	l.Logger.Info(msg, convertAttrsToAny(attrs)...)
 }
 
-func (l *defaultlogger) Warn(msg string, attrs ...slog.Attr) {
+func (l *Wrappedlogger) Warn(msg string, attrs ...slog.Attr) {
 	l.Logger.Warn(msg, convertAttrsToAny(attrs)...)
 }
 
-func (l *defaultlogger) Error(msg string, attrs ...slog.Attr) {
+func (l *Wrappedlogger) Error(msg string, attrs ...slog.Attr) {
 	l.Logger.Error(msg, convertAttrsToAny(attrs)...)
 }
 
-func (l *defaultlogger) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
+func (l *Wrappedlogger	) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
 	args := make([]any, 0, len(attrs)+2)
 	if err != nil {
 		args = append(args, l.Err(err))
@@ -132,25 +132,25 @@ func (l *defaultlogger) ErrorWithOp(msg string, err error, op string, attrs ...s
 	l.Logger.Error(msg, args...)
 }
 
-func (l *defaultlogger) Err(err error) slog.Attr {
+func (l *Wrappedlogger) Err(err error) slog.Attr {
 	return slog.Any("error", err)
 }
 
-func (l *defaultlogger) Op(value string) slog.Attr {
+func (l *Wrappedlogger) Op(value string) slog.Attr {
 	return slog.Attr{
 		Key:   "op",
 		Value: slog.StringValue(value),
 	}
 }
 
-func (l *defaultlogger) Str(key, value string) slog.Attr {
+func (l *Wrappedlogger) Str(key, value string) slog.Attr {
 	return slog.Attr{
 		Key:   key,
 		Value: slog.StringValue(value),
 	}
 }
 
-func (l *defaultlogger) Any(key string, value any) slog.Attr {
+func (l *Wrappedlogger) Any(key string, value any) slog.Attr {
 	return slog.Attr{
 		Key:   key,
 		Value: slog.AnyValue(value),
