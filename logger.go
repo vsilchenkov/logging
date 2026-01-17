@@ -19,6 +19,8 @@ type Logger interface {
 	Warn(msg string, attrs ...slog.Attr)
 	Error(msg string, attrs ...slog.Attr)
 
+	ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr)
+
 	// Вспомогательные методы для создания атрибутов
 	Err(err error) slog.Attr
 	Op(value string) slog.Attr
@@ -116,6 +118,18 @@ func (l *defaultlogger) Warn(msg string, attrs ...slog.Attr) {
 
 func (l *defaultlogger) Error(msg string, attrs ...slog.Attr) {
 	l.Logger.Error(msg, convertAttrsToAny(attrs)...)
+}
+
+func (l *defaultlogger) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
+	args := make([]any, 0, len(attrs)+2)
+	if err != nil {
+		args = append(args, l.Err(err))
+	}
+	if op != "" {
+		args = append(args, l.Op(op))
+	}
+	args = append(args, convertAttrsToAny(attrs)...)
+	l.Logger.Error(msg, args...)
 }
 
 func (l *defaultlogger) Err(err error) slog.Attr {
