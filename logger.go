@@ -25,6 +25,7 @@ type Logger interface {
 	Err(err error) slog.Attr
 	Op(value string) slog.Attr
 	Str(key, value string) slog.Attr
+	Int(key string, value int) slog.Attr
 	Any(key string, value any) slog.Attr
 }
 
@@ -147,6 +148,13 @@ func (l *Wrappedlogger) Str(key, value string) slog.Attr {
 	return slog.Attr{
 		Key:   key,
 		Value: slog.StringValue(value),
+	}
+}
+
+func (l *Wrappedlogger) Int(key string, value int) slog.Attr {
+	return slog.Attr{
+		Key:   key,
+		Value: slog.IntValue(value),
 	}
 }
 
