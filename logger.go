@@ -12,7 +12,7 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
-// Logger — интерфейс логгера, используемый в проекте
+// Logger — интерфейс логгера
 type Logger interface {
 	Debug(msg string, attrs ...slog.Attr)
 	Info(msg string, attrs ...slog.Attr)
@@ -26,6 +26,7 @@ type Logger interface {
 	Op(value string) slog.Attr
 	Str(key, value string) slog.Attr
 	Int(key string, value int) slog.Attr
+	Float64(key string, value float64) slog.Attr
 	Any(key string, value any) slog.Attr
 }
 
@@ -96,7 +97,7 @@ func Initlogger(c *Config, sConfig *SentryConfig) *Wrappedlogger {
 	}
 
 	if sConfig.Use {
-		multiHandler := NewMultiHandler(handler, SentryHandler())
+		multiHandler := NewMultiHandler(handler, SentryHandler(level))
 		logger = slog.New(multiHandler)
 	} else {
 		logger = slog.New(handler)
@@ -121,7 +122,7 @@ func (l *Wrappedlogger) Error(msg string, attrs ...slog.Attr) {
 	l.Logger.Error(msg, convertAttrsToAny(attrs)...)
 }
 
-func (l *Wrappedlogger	) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
+func (l *Wrappedlogger) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
 	args := make([]any, 0, len(attrs)+2)
 	if err != nil {
 		args = append(args, l.Err(err))
@@ -155,6 +156,13 @@ func (l *Wrappedlogger) Int(key string, value int) slog.Attr {
 	return slog.Attr{
 		Key:   key,
 		Value: slog.IntValue(value),
+	}
+}
+
+func (l *Wrappedlogger) Float64(key string, value float64) slog.Attr {
+	return slog.Attr{
+		Key:   key,
+		Value: slog.Float64Value(value),
 	}
 }
 

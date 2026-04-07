@@ -9,10 +9,10 @@ import (
 	sentryslog "github.com/getsentry/sentry-go/slog"
 )
 
-func SentryHandler() slog.Handler {
+func SentryHandler(level slog.Level) slog.Handler {
 
 	return sentryslog.Option{
-		Level:     slog.LevelWarn,
+		Level:     level,
 		AddSource: true,
 	}.NewSentryHandler(context.Background())
 
