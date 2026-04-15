@@ -13,6 +13,7 @@ type SentryConfig struct {
 	Use              bool // Включить sentry для отлова внутренних ошибок
 	Dsn              string
 	Environment      string
+	Level            int
 	AttachStacktrace bool
 	TracesSampleRate float64
 	EnableTracing    bool

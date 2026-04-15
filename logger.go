@@ -97,7 +97,13 @@ func Initlogger(c *Config, sConfig *SentryConfig) *Wrappedlogger {
 	}
 
 	if sConfig.Use {
-		multiHandler := NewMultiHandler(handler, SentryHandler(level))
+
+		sentrylevel, ok := levelMap[sConfig.Level]
+		if !ok {
+			sentrylevel = level
+		}
+
+		multiHandler := NewMultiHandler(handler, SentryHandler(sentrylevel))
 		logger = slog.New(multiHandler)
 	} else {
 		logger = slog.New(handler)
