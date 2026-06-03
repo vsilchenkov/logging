@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,13 @@ type Logger interface {
 
 	ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr)
 
+	// With возвращает логгер с предустановленными атрибутами,
+	// которые будут добавляться к каждой записи.
+	With(attrs ...slog.Attr) Logger
+	// WithContext возвращает логгер, привязанный к контексту.
+	// Контекст используется при логировании (важно для Sentry — hub/scope).
+	WithContext(ctx context.Context) Logger
+
 	// Вспомогательные методы для создания атрибутов
 	Err(err error) slog.Attr
 	Op(value string) slog.Attr
@@ -34,6 +42,7 @@ var logger *slog.Logger
 
 type Wrappedlogger struct {
 	*slog.Logger
+	ctx context.Context
 }
 
 var levelMap = map[int]slog.Level{
@@ -45,7 +54,7 @@ var levelMap = map[int]slog.Level{
 
 // NewLogger создаёт Logger из slog.Logger
 func NewLogger(slogger *slog.Logger) *Wrappedlogger {
-	return &Wrappedlogger{slogger}
+	return &Wrappedlogger{Logger: slogger, ctx: context.Background()}
 }
 
 func GetLogger() *Wrappedlogger {
@@ -112,32 +121,62 @@ func Initlogger(c *Config, sConfig *SentryConfig) *Wrappedlogger {
 	return NewLogger(logger)
 }
 
+// With возвращает логгер с предустановленными атрибутами,
+// которые будут добавляться к каждой последующей записи.
+func (l *Wrappedlogger) With(attrs ...slog.Attr) Logger {
+	return &Wrappedlogger{
+		Logger: l.Logger.With(convertAttrsToAny(attrs)...),
+		ctx:    l.context(),
+	}
+}
+
+// WithContext возвращает логгер, привязанный к переданному контексту.
+// Контекст передаётся в slog при логировании — это позволяет Sentry-хендлеру
+// извлечь hub/scope из контекста.
+func (l *Wrappedlogger) WithContext(ctx context.Context) Logger {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &Wrappedlogger{
+		Logger: l.Logger,
+		ctx:    ctx,
+	}
+}
+
+// context возвращает привязанный контекст либо context.Background().
+func (l *Wrappedlogger) context() context.Context {
+	if l.ctx == nil {
+		return context.Background()
+	}
+	return l.ctx
+}
+
 func (l *Wrappedlogger) Debug(msg string, attrs ...slog.Attr) {
-	l.Logger.Debug(msg, convertAttrsToAny(attrs)...)
+	l.Logger.LogAttrs(l.context(), slog.LevelDebug, msg, attrs...)
 }
 
 func (l *Wrappedlogger) Info(msg string, attrs ...slog.Attr) {
-	l.Logger.Info(msg, convertAttrsToAny(attrs)...)
+	l.Logger.LogAttrs(l.context(), slog.LevelInfo, msg, attrs...)
 }
 
 func (l *Wrappedlogger) Warn(msg string, attrs ...slog.Attr) {
-	l.Logger.Warn(msg, convertAttrsToAny(attrs)...)
+	l.Logger.LogAttrs(l.context(), slog.LevelWarn, msg, attrs...)
 }
 
 func (l *Wrappedlogger) Error(msg string, attrs ...slog.Attr) {
-	l.Logger.Error(msg, convertAttrsToAny(attrs)...)
+	l.Logger.LogAttrs(l.context(), slog.LevelError, msg, attrs...)
 }
 
 func (l *Wrappedlogger) ErrorWithOp(msg string, err error, op string, attrs ...slog.Attr) {
-	args := make([]any, 0, len(attrs)+2)
+	args := make([]slog.Attr, 0, len(attrs)+2)
 	if err != nil {
 		args = append(args, l.Err(err))
 	}
 	if op != "" {
 		args = append(args, l.Op(op))
 	}
-	args = append(args, convertAttrsToAny(attrs)...)
-	l.Logger.Error(msg, args...)
+	args = append(args, attrs...)
+	l.Logger.LogAttrs(l.context(), slog.LevelError, msg, args...)
 }
 
 func (l *Wrappedlogger) Err(err error) slog.Attr {
